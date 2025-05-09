@@ -1,0 +1,63 @@
+# road_accident_prediction.py
+
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix
+
+# 1. Load dataset (replace with your own CSV file)
+data = pd.read_csv('road_accidents.csv')
+
+# 2. Data preprocessing
+# Example features: 'Time', 'Weather', 'Speed_Zone', 'Road_Geometry', 'Light_Condition', 'Severity'
+categorical_features = ['Weather', 'Road_Geometry', 'Light_Condition']
+label_encoders = {}
+
+for col in categorical_features:
+    le = LabelEncoder()
+    data[col] = le.fit_transform(data[col].astype(str))
+    label_encoders[col] = le
+
+# Encode target variable (Severity)
+target_le = LabelEncoder()
+data['Severity'] = target_le.fit_transform(data['Severity'])
+
+# 3. Feature selection
+features = ['Time', 'Weather', 'Speed_Zone', 'Road_Geometry', 'Light_Condition']
+X = data[features]
+y = data['Severity']
+
+# 4. Train-test split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 5. Model training
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+# 6. Evaluation
+y_pred = model.predict(X_test)
+print("Classification Report:")
+print(classification_report(y_test, y_pred, target_names=target_le.classes_))
+
+print("Confusion Matrix:")
+print(confusion_matrix(y_test, y_pred))
+
+# 7. Predicting new data
+def predict_accident_severity(input_dict):
+    # input_dict: {'Time': 14, 'Weather': 'Clear', 'Speed_Zone': 60, ...}
+    input_df = pd.DataFrame([input_dict])
+    for col in categorical_features:
+        input_df[col] = label_encoders[col].transform([input_df[col][0]])
+    pred = model.predict(input_df[features])
+    return target_le.inverse_transform(pred)[0]
+
+# Example prediction
+sample_input = {
+    'Time': 18,  # 6 PM
+    'Weather': 'Rainy',
+    'Speed_Zone': 80,
+    'Road_Geometry': 'Curve',
+    'Light_Condition': 'Night'
+}
+print("Predicted Severity:", predict_accident_severity(sample_input))
